@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 
 import StreamCard from "./StreamCard";
 import PremiumStreamCard from "./PremiumStreamCard";
@@ -9,6 +9,7 @@ import { MonitorPlay, MessageSquare, MessageSquareOff, Sparkles, Volume2, Volume
 import { Button } from "@/components/ui/button";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 // More live stream options
 const liveStreamOptions = [
@@ -94,6 +95,36 @@ export default function Home() {
   const [resizeCorner, setResizeCorner] = useState<'nw' | 'ne' | 'sw' | 'se' | null>(null);
   const [resizeStart, setResizeStart] = useState({ x: 0, y: 0, width: 0, height: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
+  const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'quarterly' | 'yearly'>('quarterly');
+  const [showPaymentOptions, setShowPaymentOptions] = useState(true);
+  const [freeTrialTimeLeft, setFreeTrialTimeLeft] = useState<number | null>(null);
+  const [showTrialEndedDialog, setShowTrialEndedDialog] = useState(false);
+
+  // Timer effect for free premium
+  useEffect(() => {
+    if (freeTrialTimeLeft !== null && freeTrialTimeLeft > 0) {
+      const timer = setInterval(() => {
+        setFreeTrialTimeLeft(prev => {
+          if (prev === null || prev <= 1) {
+            setIsPremium(false);
+            setShowPaymentOptions(true);
+            setShowTrialEndedDialog(true);
+            return null;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+
+      return () => clearInterval(timer);
+    }
+  }, [freeTrialTimeLeft]);
+
+  // Format time left as MM:SS
+  const formatTimeLeft = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
 
   const handleMouseDownDrag = (e: React.MouseEvent, index: number) => {
     if (!isPremium) return;
@@ -378,7 +409,7 @@ export default function Home() {
   };
 
   const handleUpgrade = async () => {
-    console.log("Redirecting to Stripe Checkout...");
+    console.log(`Redirecting to Stripe Checkout for ${selectedPlan} plan...`);
     
     setTimeout(() => {
       setIsPremium(true);
@@ -392,8 +423,23 @@ export default function Home() {
         { channel: "timthetatman", platform: 'twitch', size: 'medium', row: 'bottom', x: 1240, y: 0, width: 600, height: 400 },
       ];
       setStreamConfigs(defaultStreams);
-      alert("Premium upgrade successful! You now have access to all streams.");
+      alert(`Premium ${selectedPlan} upgrade successful! You now have access to all streams.`);
     }, 1000);
+  };
+
+  const handleFreePremium = () => {
+    setIsPremium(true);
+    setShowPaymentOptions(false);
+    setFreeTrialTimeLeft(15 * 60); // 15 minutes in seconds
+    const defaultStreams: StreamConfig[] = [
+      { channel: "xqc", platform: 'twitch', size: 'medium', row: 'top', x: 0, y: 0, width: 600, height: 400 },
+      { channel: "shroud", platform: 'twitch', size: 'medium', row: 'top', x: 620, y: 0, width: 600, height: 400 },
+      { channel: "pokimane", platform: 'twitch', size: 'medium', row: 'bottom', x: 0, y: 420, width: 600, height: 400 },
+      { channel: "summit1g", platform: 'twitch', size: 'medium', row: 'bottom', x: 620, y: 420, width: 600, height: 400 },
+      { channel: "lirik", platform: 'twitch', size: 'medium', row: 'bottom', x: 1240, y: 420, width: 600, height: 400 },
+      { channel: "timthetatman", platform: 'twitch', size: 'medium', row: 'bottom', x: 1240, y: 0, width: 600, height: 400 },
+    ];
+    setStreamConfigs(defaultStreams);
   };
 
   const removeStream = (index: number) => {
@@ -478,7 +524,7 @@ export default function Home() {
 
   return (
     <div 
-      className={`min-h-screen ${isDarkMode ? 'bg-black' : 'bg-gradient-to-b from-white via-white to-red-800'} relative overflow-hidden`}
+      className={`min-h-screen ${isDarkMode ? 'bg-black' : 'bg-gradient-to-b from-red-50 via-red-100 to-red-800'} relative overflow-hidden`}
       onMouseMove={(e) => {
         handleMouseMove(e);
         handleChatMouseMove(e);
@@ -489,24 +535,48 @@ export default function Home() {
       }}
     >
       {/* Header */}
-      <header className={`${isDarkMode ? 'bg-black border-gray-800' : 'bg-white/90 backdrop-blur-sm border-gray-200'} border-b sticky top-0 z-50 shadow-sm`}>
-        <div className="max-w-7xl mx-auto px-6 py-5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="bg-red-600 p-2 rounded-full w-9 h-9 flex items-center justify-center">
-                <span className="text-white text-xs font-bold">MSW</span>
-              </div>
-              <div>
-                <h1 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                  MultiStreamWatch
-                </h1>
-              </div>
+      <header className={`${isDarkMode ? 'bg-gray-900/95 border-gray-800' : 'bg-white/95 border-gray-200'} backdrop-blur-sm border-b sticky top-0 z-50`}>
+        <div className="max-w-[95vw] mx-auto px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="bg-red-600 p-2 rounded-full w-9 h-9 flex items-center justify-center">
+              <span className="text-white text-xs font-bold">MSW</span>
             </div>
-            <div className="flex items-center gap-2">
-              <TwitchAuth onAuthChange={setIsAuthenticated} />
-              <KickAuth onAuthChange={setIsKickAuthenticated} />
-              <YouTubeAuth onAuthChange={setIsYouTubeAuthenticated} />
+            <div>
+              <h1 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                MultiStreamWatch
+              </h1>
+              {freeTrialTimeLeft !== null && freeTrialTimeLeft > 0 && (
+                <p className="text-xs text-red-600 font-semibold">
+                  Free Trial: {formatTimeLeft(freeTrialTimeLeft)} remaining
+                </p>
+              )}
             </div>
+          </div>
+          <div className="flex items-center gap-4">
+            {/* Dark Mode Toggle - Visible but locked for non-premium */}
+            <div className="relative">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  if (isPremium) {
+                    setIsDarkMode(!isDarkMode);
+                  } else {
+                    alert('Dark mode is a premium feature! Subscribe to unlock.');
+                  }
+                }}
+                className={`${isDarkMode ? 'text-white hover:bg-gray-800' : 'text-gray-900 hover:bg-gray-100'} ${!isPremium ? 'opacity-60' : ''}`}
+              >
+                {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+              </Button>
+              {!isPremium && (
+                <Lock className="h-3 w-3 text-red-600 absolute -top-1 -right-1" />
+              )}
+            </div>
+            
+            <TwitchAuth onAuthChange={setIsAuthenticated} />
+            <KickAuth onAuthChange={setIsKickAuthenticated} />
+            <YouTubeAuth onAuthChange={setIsYouTubeAuthenticated} />
           </div>
         </div>
       </header>
@@ -592,24 +662,6 @@ export default function Home() {
                     Restore All 6 Streams
                   </Button>
                 )}
-                <Button
-                  onClick={() => setIsDarkMode(!isDarkMode)}
-                  variant="outline"
-                  size="sm"
-                  className={`${isDarkMode ? 'border-gray-700 bg-gray-800 hover:bg-gray-700 text-white' : 'border-gray-300 hover:bg-gray-100'}`}
-                >
-                  {isDarkMode ? (
-                    <>
-                      <Sun className="h-4 w-4 mr-2" />
-                      Light Mode
-                    </>
-                  ) : (
-                    <>
-                      <Moon className="h-4 w-4 mr-2" />
-                      Dark Mode
-                    </>
-                  )}
-                </Button>
                 <Button
                   onClick={() => setIsMuted(!isMuted)}
                   variant="outline"
@@ -867,32 +919,311 @@ export default function Home() {
 
         {/* Premium Layout Preview for Free Users */}
         {!isPremium && (
-          <div className="bg-gradient-to-r from-red-50 to-red-100 border-2 border-red-300 rounded-lg p-6 space-y-4">
-            <div className="flex items-start justify-between">
-              <div className="space-y-2">
-                <h3 className="text-lg font-bold text-red-900 flex items-center gap-2">
-                  <Sparkles className="h-5 w-5" />
-                  Subscribe to unlock powerful customization features:
+          <div className={`${isDarkMode ? 'bg-gradient-to-br from-gray-900 to-gray-800 border-gray-700' : 'bg-gradient-to-br from-white to-gray-50 border-gray-200'} border-2 rounded-2xl p-8 shadow-xl`}>
+            <div className="max-w-5xl mx-auto">
+              <div className="text-center mb-8">
+                <h3 className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'} flex items-center justify-center gap-3 mb-3`}>
+                  <Sparkles className="h-8 w-8 text-red-600" />
+                  Unlock Premium Features
                 </h3>
-                <ul className="text-sm text-red-600 space-y-1 ml-4">
-                  <li>• Watch Streams From Any Service - YouTube, KICK, Twitch!</li>
-                  <li>• Unlock up to +6 Streams!</li>
-                  <li>• Have your followed streamers automatically populate at the top once logged in!</li>
-                  <li>• Skip ads seamlessly - If 1 stream is showing an AD simply watch another!</li>
-                  <li>• Pop Out chat feature where you can pop out the chat and extend it to never miss what anyone saying!</li>
+                <p className={`text-lg ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                  Choose the perfect plan for your streaming needs
+                </p>
+              </div>
+
+              {showPaymentOptions && (
+                <>
+                  <div className="grid md:grid-cols-3 gap-6 mb-8">
+                    {/* Monthly Plan */}
+                    <button
+                      onClick={() => setSelectedPlan('monthly')}
+                      className={`relative p-6 rounded-xl border-2 transition-all duration-200 text-left ${
+                        selectedPlan === 'monthly'
+                          ? 'border-red-600 bg-red-50 shadow-lg scale-105'
+                          : isDarkMode
+                            ? 'border-gray-700 bg-gray-800 hover:border-gray-600'
+                            : 'border-gray-200 bg-white hover:border-gray-300'
+                      }`}
+                    >
+                      {selectedPlan === 'monthly' && (
+                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-full">
+                          SELECTED
+                        </div>
+                      )}
+                      <div className="absolute -top-3 right-3 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded-full">
+                        MOST POPULAR CHOICE!
+                      </div>
+                      <div className="text-center">
+                        <h4 className={`text-lg font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                          Monthly
+                        </h4>
+                        <div className="mb-4">
+                          <span className={`text-4xl font-bold ${selectedPlan === 'monthly' ? 'text-red-600' : isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                            $5.00
+                          </span>
+                          <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>/month</span>
+                        </div>
+                        <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                          Perfect for trying out premium features
+                        </p>
+                      </div>
+                    </button>
+
+                    {/* Quarterly Plan */}
+                    <button
+                      onClick={() => setSelectedPlan('quarterly')}
+                      className={`relative p-6 rounded-xl border-2 transition-all duration-200 text-left ${
+                        selectedPlan === 'quarterly'
+                          ? 'border-red-600 bg-red-50 shadow-lg scale-105'
+                          : isDarkMode
+                            ? 'border-gray-700 bg-gray-800 hover:border-gray-600'
+                            : 'border-gray-200 bg-white hover:border-gray-300'
+                      }`}
+                    >
+                      {selectedPlan === 'quarterly' && (
+                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-full">
+                          SELECTED
+                        </div>
+                      )}
+                      <div className="text-center">
+                        <h4 className={`text-lg font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                          Quarterly
+                        </h4>
+                        <div className="mb-4">
+                          <span className={`text-4xl font-bold ${selectedPlan === 'quarterly' ? 'text-red-600' : isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                            $12.00
+                          </span>
+                          <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>/3 months</span>
+                        </div>
+                      </div>
+                    </button>
+
+                    {/* Yearly Plan */}
+                    <button
+                      onClick={() => setSelectedPlan('yearly')}
+                      className={`relative p-6 rounded-xl border-2 transition-all duration-200 text-left ${
+                        selectedPlan === 'yearly'
+                          ? 'border-red-600 bg-red-50 shadow-lg scale-105'
+                          : isDarkMode
+                            ? 'border-gray-700 bg-gray-800 hover:border-gray-600'
+                            : 'border-gray-200 bg-white hover:border-gray-300'
+                      }`}
+                    >
+                      {selectedPlan === 'yearly' && (
+                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-full">
+                          SELECTED
+                        </div>
+                      )}
+                      <div className="text-center">
+                        <h4 className={`text-lg font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                          Yearly
+                        </h4>
+                        <div className="mb-4">
+                          <span className={`text-4xl font-bold ${selectedPlan === 'yearly' ? 'text-red-600' : isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                            $25.00
+                          </span>
+                          <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>/year</span>
+                        </div>
+                      </div>
+                    </button>
+                  </div>
+                </>
+              )}
+
+              <div className={`${isDarkMode ? 'bg-gray-800/50' : 'bg-gray-50'} rounded-xl p-6 mb-6`}>
+                <h4 className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'} mb-3`}>
+                  Premium Features Include:
+                </h4>
+                <ul className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} space-y-2`}>
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-600 font-bold">✓</span>
+                    <span>Watch Streams From Any Service - YouTube, KICK, Twitch!</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-600 font-bold">✓</span>
+                    <span>Unlock up to 6 simultaneous streams</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-600 font-bold">✓</span>
+                    <span>Dark mode theme for comfortable viewing</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-600 font-bold">✓</span>
+                    <span>Auto-populate followed streamers when logged in</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-600 font-bold">✓</span>
+                    <span>Skip ads seamlessly - switch between streams during ads</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-600 font-bold">✓</span>
+                    <span>Pop-out chat feature with resizable windows</span>
+                  </li>
                 </ul>
               </div>
-              <Button
-                onClick={handleUpgrade}
-                className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-semibold"
-              >
-                <Sparkles className="h-4 w-4 mr-2" />
-                Subscribe Now
-              </Button>
+
+              <div className="text-center space-y-3">
+                {showPaymentOptions && (
+                  <Button
+                    onClick={handleUpgrade}
+                    size="lg"
+                    className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-bold text-lg px-12 py-6 rounded-xl shadow-lg hover:shadow-xl transition-all"
+                  >
+                    <Sparkles className="h-5 w-5 mr-2" />
+                    Subscribe Now - {selectedPlan === 'monthly' ? '$5.00/mo' : selectedPlan === 'quarterly' ? '$12.00/3mo' : '$25.00/yr'}
+                  </Button>
+                )}
+                
+                <Button
+                  onClick={handleFreePremium}
+                  size="lg"
+                  variant="outline"
+                  className={`${isDarkMode ? 'border-gray-600 text-white hover:bg-gray-800' : 'border-gray-300 text-gray-900 hover:bg-gray-100'} font-bold text-lg px-12 py-6 rounded-xl shadow-lg hover:shadow-xl transition-all`}
+                >
+                  Try Free Premium
+                </Button>
+                
+                {showPaymentOptions && (
+                  <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-500'} mt-3`}>
+                    Cancel anytime • Secure payment • Instant access
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         )}
       </main>
+
+      {/* Trial Ended Dialog */}
+      <Dialog open={showTrialEndedDialog} onOpenChange={setShowTrialEndedDialog}>
+        <DialogContent className={`${isDarkMode ? 'bg-gray-900 border-gray-700' : 'bg-white'} max-w-4xl`}>
+          <DialogHeader>
+            <DialogTitle className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'} flex items-center gap-2`}>
+              <Sparkles className="h-6 w-6 text-red-600" />
+              Your Free Trial Has Ended
+            </DialogTitle>
+            <DialogDescription className={`text-base ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+              Continue enjoying premium features by choosing a plan below
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 mt-4">
+            <div className="grid md:grid-cols-3 gap-4">
+              {/* Monthly Plan */}
+              <button
+                onClick={() => setSelectedPlan('monthly')}
+                className={`relative p-6 rounded-xl border-2 transition-all duration-200 text-left ${
+                  selectedPlan === 'monthly'
+                    ? 'border-red-600 bg-red-50 shadow-lg scale-105'
+                    : isDarkMode
+                      ? 'border-gray-700 bg-gray-800 hover:border-gray-600'
+                      : 'border-gray-200 bg-white hover:border-gray-300'
+                }`}
+              >
+                {selectedPlan === 'monthly' && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-full">
+                    SELECTED
+                  </div>
+                )}
+                <div className="absolute -top-3 right-3 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded-full">
+                  MOST POPULAR CHOICE!
+                </div>
+                <div className="text-center">
+                  <h4 className={`text-lg font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                    Monthly
+                  </h4>
+                  <div className="mb-4">
+                    <span className={`text-4xl font-bold ${selectedPlan === 'monthly' ? 'text-red-600' : isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                      $5.00
+                    </span>
+                    <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>/month</span>
+                  </div>
+                  <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                    Perfect for trying out premium features
+                  </p>
+                </div>
+              </button>
+
+              {/* Quarterly Plan */}
+              <button
+                onClick={() => setSelectedPlan('quarterly')}
+                className={`relative p-6 rounded-xl border-2 transition-all duration-200 text-left ${
+                  selectedPlan === 'quarterly'
+                    ? 'border-red-600 bg-red-50 shadow-lg scale-105'
+                    : isDarkMode
+                      ? 'border-gray-700 bg-gray-800 hover:border-gray-600'
+                      : 'border-gray-200 bg-white hover:border-gray-300'
+                }`}
+              >
+                {selectedPlan === 'quarterly' && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-full">
+                    SELECTED
+                  </div>
+                )}
+                <div className="text-center">
+                  <h4 className={`text-lg font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                    Quarterly
+                  </h4>
+                  <div className="mb-4">
+                    <span className={`text-4xl font-bold ${selectedPlan === 'quarterly' ? 'text-red-600' : isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                      $12.00
+                    </span>
+                    <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>/3 months</span>
+                  </div>
+                </div>
+              </button>
+
+              {/* Yearly Plan */}
+              <button
+                onClick={() => setSelectedPlan('yearly')}
+                className={`relative p-6 rounded-xl border-2 transition-all duration-200 text-left ${
+                  selectedPlan === 'yearly'
+                    ? 'border-red-600 bg-red-50 shadow-lg scale-105'
+                    : isDarkMode
+                      ? 'border-gray-700 bg-gray-800 hover:border-gray-600'
+                      : 'border-gray-200 bg-white hover:border-gray-300'
+                }`}
+              >
+                {selectedPlan === 'yearly' && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-full">
+                    SELECTED
+                  </div>
+                )}
+                <div className="absolute -top-3 right-3 bg-green-600 text-white text-xs font-bold px-2 py-1 rounded-full">
+                  SAVE 58%
+                </div>
+                <div className="text-center">
+                  <h4 className={`text-lg font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                    Yearly
+                  </h4>
+                  <div className="mb-4">
+                    <span className={`text-4xl font-bold ${selectedPlan === 'yearly' ? 'text-red-600' : isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                      $25.00
+                    </span>
+                    <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>/year</span>
+                  </div>
+                </div>
+              </button>
+            </div>
+
+            <Button
+              onClick={() => {
+                handleUpgrade();
+                setShowTrialEndedDialog(false);
+              }}
+              size="lg"
+              className="w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-bold text-lg py-6 rounded-xl shadow-lg hover:shadow-xl transition-all"
+            >
+              <Sparkles className="h-5 w-5 mr-2" />
+              Subscribe Now - {selectedPlan === 'monthly' ? '$5.00/mo' : selectedPlan === 'quarterly' ? '$12.00/3mo' : '$25.00/yr'}
+            </Button>
+
+            <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-500'} text-center`}>
+              Cancel anytime • Secure payment • Instant access
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Draggable Chat Popups for Premium Users */}
       {isPremium && openChats.map((chat, index) => (
@@ -952,7 +1283,7 @@ export default function Home() {
       {streamLayout === 'freeform' ? (
         <div 
           ref={containerRef}
-          className="relative min-h-[1200px] border-2 border-dashed border-gray-300 rounded-lg"
+          className="relative min-h-[1200px] border-2 border-dashed border-gray-300 rounded-lg max-w-[90vw] mx-auto px-6"
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
         >
@@ -1035,99 +1366,101 @@ export default function Home() {
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Active Streams - only first 2 */}
-          {streamConfigs.slice(0, 2).map((config, index) => (
-            <div key={`stream-${index}`} className="relative">
-              {/* Stream Number Badge */}
-              <div className="absolute top-2 left-2 z-20 bg-gray-900/90 text-white px-3 py-1 rounded-full font-bold text-sm">
-                {index + 1}
+        <div className="max-w-[90vw] mx-auto px-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Active Streams - only first 2 */}
+            {streamConfigs.slice(0, 2).map((config, index) => (
+              <div key={`stream-${index}`} className="relative">
+                {/* Stream Number Badge */}
+                <div className="absolute top-2 left-2 z-20 bg-gray-900/90 text-white px-3 py-1 rounded-full font-bold text-sm">
+                  {index + 1}
+                </div>
+
+                {isPremium && (
+                  <>
+                    <Button
+                      onClick={() => openChatWindow(config.channel, config.platform)}
+                      size="sm"
+                      className="absolute top-2 left-14 z-20 h-8 px-3 bg-blue-600 hover:bg-blue-700"
+                    >
+                      <MessageSquare className="h-4 w-4 mr-1" />
+                      Pop Out
+                    </Button>
+                    
+                    {/* Delete button */}
+                    <Button
+                      onClick={() => removeStream(index)}
+                      size="sm"
+                      variant="destructive"
+                      className="absolute top-2 right-2 z-20 h-8 w-8 p-0 bg-red-600 hover:bg-red-700"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </>
+                )}
+                
+                <StreamCard
+                  channelName={config.channel}
+                  platform={config.platform}
+                  showChat={showChats}
+                  muted={isMuted}
+                  isDarkMode={isDarkMode}
+                  isPremium={isPremium}
+                  onChannelChange={(newChannel) => handleChannelChange(config.channel, newChannel)}
+                  onPlatformChange={(newPlatform) => handlePlatformChange(config.channel, newPlatform)}
+                />
               </div>
-
-              {isPremium && (
-                <>
-                  <Button
-                    onClick={() => openChatWindow(config.channel, config.platform)}
-                    size="sm"
-                    className="absolute top-2 left-14 z-20 h-8 px-3 bg-blue-600 hover:bg-blue-700"
-                  >
-                    <MessageSquare className="h-4 w-4 mr-1" />
-                    Pop Out
-                  </Button>
-                  
-                  {/* Delete button */}
-                  <Button
-                    onClick={() => removeStream(index)}
-                    size="sm"
-                    variant="destructive"
-                    className="absolute top-2 right-2 z-20 h-8 w-8 p-0 bg-red-600 hover:bg-red-700"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </>
-              )}
-              
-              <StreamCard
-                channelName={config.channel}
-                platform={config.platform}
-                showChat={showChats}
-                muted={isMuted}
-                isDarkMode={isDarkMode}
-                isPremium={isPremium}
-                onChannelChange={(newChannel) => handleChannelChange(config.channel, newChannel)}
-                onPlatformChange={(newPlatform) => handlePlatformChange(config.channel, newPlatform)}
+            ))}
+            
+            {/* Premium Locked Slots - streams 3-6 always locked for non-premium */}
+            {!isPremium && [3, 4, 5, 6].map((position) => (
+              <PremiumStreamCard
+                key={`premium-locked-${position}`}
+                position={position}
+                onUpgrade={handleUpgrade}
               />
-            </div>
-          ))}
-          
-          {/* Premium Locked Slots - streams 3-6 always locked for non-premium */}
-          {!isPremium && [3, 4, 5, 6].map((position) => (
-            <PremiumStreamCard
-              key={`premium-locked-${position}`}
-              position={position}
-              onUpgrade={handleUpgrade}
-            />
-          ))}
+            ))}
 
-          {/* If premium, show remaining streams */}
-          {isPremium && streamConfigs.slice(2).map((config, index) => (
-            <div key={`stream-${index + 2}`} className="relative">
-              {/* Stream Number Badge */}
-              <div className="absolute top-2 left-2 z-20 bg-gray-900/90 text-white px-3 py-1 rounded-full font-bold text-sm">
-                {index + 3}
+            {/* If premium, show remaining streams */}
+            {isPremium && streamConfigs.slice(2).map((config, index) => (
+              <div key={`stream-${index + 2}`} className="relative">
+                {/* Stream Number Badge */}
+                <div className="absolute top-2 left-2 z-20 bg-gray-900/90 text-white px-3 py-1 rounded-full font-bold text-sm">
+                  {index + 3}
+                </div>
+
+                <Button
+                  onClick={() => openChatWindow(config.channel, config.platform)}
+                  size="sm"
+                  className="absolute top-2 left-14 z-20 h-8 px-3 bg-blue-600 hover:bg-blue-700"
+                >
+                  <MessageSquare className="h-4 w-4 mr-1" />
+                  Pop Out
+                </Button>
+                
+                {/* Delete button */}
+                <Button
+                  onClick={() => removeStream(index + 2)}
+                  size="sm"
+                  variant="destructive"
+                  className="absolute top-2 right-2 z-20 h-8 w-8 p-0 bg-red-600 hover:bg-red-700"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+                
+                <StreamCard
+                  channelName={config.channel}
+                  platform={config.platform}
+                  showChat={showChats}
+                  muted={isMuted}
+                  isDarkMode={isDarkMode}
+                  isPremium={isPremium}
+                  onChannelChange={(newChannel) => handleChannelChange(config.channel, newChannel)}
+                  onPlatformChange={(newPlatform) => handlePlatformChange(config.channel, newPlatform)}
+                />
               </div>
-
-              <Button
-                onClick={() => openChatWindow(config.channel, config.platform)}
-                size="sm"
-                className="absolute top-2 left-14 z-20 h-8 px-3 bg-blue-600 hover:bg-blue-700"
-              >
-                <MessageSquare className="h-4 w-4 mr-1" />
-                Pop Out
-              </Button>
-              
-              {/* Delete button */}
-              <Button
-                onClick={() => removeStream(index + 2)}
-                size="sm"
-                variant="destructive"
-                className="absolute top-2 right-2 z-20 h-8 w-8 p-0 bg-red-600 hover:bg-red-700"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-              
-              <StreamCard
-                channelName={config.channel}
-                platform={config.platform}
-                showChat={showChats}
-                muted={isMuted}
-                isDarkMode={isDarkMode}
-                isPremium={isPremium}
-                onChannelChange={(newChannel) => handleChannelChange(config.channel, newChannel)}
-                onPlatformChange={(newPlatform) => handlePlatformChange(config.channel, newPlatform)}
-              />
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       )}
     </div>
