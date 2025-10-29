@@ -919,25 +919,25 @@ export default function Home() {
 
         {/* Premium Layout Preview for Free Users */}
         {!isPremium && (
-          <div className={`${isDarkMode ? 'bg-gradient-to-br from-gray-900 to-gray-800 border-gray-700' : 'bg-gradient-to-br from-white to-gray-50 border-gray-200'} border-2 rounded-2xl p-8 shadow-xl`}>
+          <div className={`${isDarkMode ? 'bg-gradient-to-br from-gray-900 to-gray-800 border-gray-700' : 'bg-gradient-to-br from-white to-gray-50 border-gray-200'} border-2 rounded-2xl p-6 shadow-xl`}>
             <div className="max-w-5xl mx-auto">
-              <div className="text-center mb-8">
-                <h3 className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'} flex items-center justify-center gap-3 mb-3`}>
-                  <Sparkles className="h-8 w-8 text-red-600" />
+              <div className="text-center mb-6">
+                <h3 className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'} flex items-center justify-center gap-3 mb-2`}>
+                  <Sparkles className="h-7 w-7 text-red-600" />
                   Unlock Premium Features
                 </h3>
-                <p className={`text-lg ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                <p className={`text-base ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                   Choose the perfect plan for your streaming needs
                 </p>
               </div>
 
               {showPaymentOptions && (
                 <>
-                  <div className="grid md:grid-cols-3 gap-6 mb-8">
+                  <div className="grid md:grid-cols-3 gap-4 mb-6">
                     {/* Monthly Plan */}
                     <button
                       onClick={() => setSelectedPlan('monthly')}
-                      className={`relative p-6 rounded-xl border-2 transition-all duration-200 text-left ${
+                      className={`relative p-4 rounded-xl border-2 transition-all duration-200 text-left ${
                         selectedPlan === 'monthly'
                           ? 'border-red-600 bg-red-50 shadow-lg scale-105'
                           : isDarkMode
@@ -946,24 +946,24 @@ export default function Home() {
                       }`}
                     >
                       {selectedPlan === 'monthly' && (
-                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-full">
+                        <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">
                           SELECTED
                         </div>
                       )}
-                      <div className="absolute -top-3 right-3 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded-full">
+                      <div className="absolute -top-2 right-2 bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">
                         MOST POPULAR CHOICE!
                       </div>
                       <div className="text-center">
-                        <h4 className={`text-lg font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                        <h4 className={`text-base font-bold mb-1 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                           Monthly
                         </h4>
-                        <div className="mb-4">
-                          <span className={`text-4xl font-bold ${selectedPlan === 'monthly' ? 'text-red-600' : isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                            $5.00
+                        <div className="mb-2">
+                          <span className={`text-3xl font-bold ${selectedPlan === 'monthly' ? 'text-red-600' : isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                            $6.00
                           </span>
-                          <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>/month</span>
+                          <span className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>/month</span>
                         </div>
-                        <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                        <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                           Perfect for trying out premium features
                         </p>
                       </div>
@@ -972,7 +972,7 @@ export default function Home() {
                     {/* Quarterly Plan */}
                     <button
                       onClick={() => setSelectedPlan('quarterly')}
-                      className={`relative p-6 rounded-xl border-2 transition-all duration-200 text-left ${
+                      className={`relative p-4 rounded-xl border-2 transition-all duration-200 text-left ${
                         selectedPlan === 'quarterly'
                           ? 'border-red-600 bg-red-50 shadow-lg scale-105'
                           : isDarkMode
@@ -981,19 +981,22 @@ export default function Home() {
                       }`}
                     >
                       {selectedPlan === 'quarterly' && (
-                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-full">
+                        <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">
                           SELECTED
                         </div>
                       )}
+                      <div className="absolute -top-2 right-2 bg-green-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                        BEST SAVINGS
+                      </div>
                       <div className="text-center">
-                        <h4 className={`text-lg font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                        <h4 className={`text-base font-bold mb-1 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                           Quarterly
                         </h4>
-                        <div className="mb-4">
-                          <span className={`text-4xl font-bold ${selectedPlan === 'quarterly' ? 'text-red-600' : isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                        <div className="mb-2">
+                          <span className={`text-3xl font-bold ${selectedPlan === 'quarterly' ? 'text-red-600' : isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                             $12.00
                           </span>
-                          <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>/3 months</span>
+                          <span className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>/3 months</span>
                         </div>
                       </div>
                     </button>
@@ -1001,7 +1004,7 @@ export default function Home() {
                     {/* Yearly Plan */}
                     <button
                       onClick={() => setSelectedPlan('yearly')}
-                      className={`relative p-6 rounded-xl border-2 transition-all duration-200 text-left ${
+                      className={`relative p-4 rounded-xl border-2 transition-all duration-200 text-left ${
                         selectedPlan === 'yearly'
                           ? 'border-red-600 bg-red-50 shadow-lg scale-105'
                           : isDarkMode
@@ -1010,19 +1013,19 @@ export default function Home() {
                       }`}
                     >
                       {selectedPlan === 'yearly' && (
-                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-full">
+                        <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">
                           SELECTED
                         </div>
                       )}
                       <div className="text-center">
-                        <h4 className={`text-lg font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                        <h4 className={`text-base font-bold mb-1 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                           Yearly
                         </h4>
-                        <div className="mb-4">
-                          <span className={`text-4xl font-bold ${selectedPlan === 'yearly' ? 'text-red-600' : isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                            $25.00
+                        <div className="mb-2">
+                          <span className={`text-3xl font-bold ${selectedPlan === 'yearly' ? 'text-red-600' : isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                            $30.00
                           </span>
-                          <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>/year</span>
+                          <span className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>/year</span>
                         </div>
                       </div>
                     </button>
@@ -1030,11 +1033,11 @@ export default function Home() {
                 </>
               )}
 
-              <div className={`${isDarkMode ? 'bg-gray-800/50' : 'bg-gray-50'} rounded-xl p-6 mb-6`}>
-                <h4 className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'} mb-3`}>
+              <div className={`${isDarkMode ? 'bg-gray-800/50' : 'bg-gray-50'} rounded-xl p-4 mb-4`}>
+                <h4 className={`text-xs font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'} mb-2`}>
                   Premium Features Include:
                 </h4>
-                <ul className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} space-y-2`}>
+                <ul className={`text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} space-y-1.5`}>
                   <li className="flex items-start gap-2">
                     <span className="text-green-600 font-bold">✓</span>
                     <span>Watch Streams From Any Service - YouTube, KICK, Twitch!</span>
@@ -1062,15 +1065,15 @@ export default function Home() {
                 </ul>
               </div>
 
-              <div className="text-center space-y-3">
+              <div className="text-center space-y-2">
                 {showPaymentOptions && (
                   <Button
                     onClick={handleUpgrade}
                     size="lg"
-                    className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-bold text-lg px-12 py-6 rounded-xl shadow-lg hover:shadow-xl transition-all"
+                    className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-bold text-base px-10 py-5 rounded-xl shadow-lg hover:shadow-xl transition-all"
                   >
-                    <Sparkles className="h-5 w-5 mr-2" />
-                    Subscribe Now - {selectedPlan === 'monthly' ? '$5.00/mo' : selectedPlan === 'quarterly' ? '$12.00/3mo' : '$25.00/yr'}
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Subscribe Now - {selectedPlan === 'monthly' ? '$6.00/mo' : selectedPlan === 'quarterly' ? '$12.00/3mo' : '$30.00/yr'}
                   </Button>
                 )}
                 
@@ -1078,13 +1081,13 @@ export default function Home() {
                   onClick={handleFreePremium}
                   size="lg"
                   variant="outline"
-                  className={`${isDarkMode ? 'border-gray-600 text-white hover:bg-gray-800' : 'border-gray-300 text-gray-900 hover:bg-gray-100'} font-bold text-lg px-12 py-6 rounded-xl shadow-lg hover:shadow-xl transition-all`}
+                  className={`${isDarkMode ? 'border-gray-600 text-white hover:bg-gray-800' : 'border-gray-300 text-gray-900 hover:bg-gray-100'} font-bold text-base px-10 py-5 rounded-xl shadow-lg hover:shadow-xl transition-all`}
                 >
                   Try Free Premium
                 </Button>
                 
                 {showPaymentOptions && (
-                  <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-500'} mt-3`}>
+                  <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-500'} mt-2`}>
                     Cancel anytime • Secure payment • Instant access
                   </p>
                 )}
@@ -1134,7 +1137,7 @@ export default function Home() {
                   </h4>
                   <div className="mb-4">
                     <span className={`text-4xl font-bold ${selectedPlan === 'monthly' ? 'text-red-600' : isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                      $5.00
+                      $6.00
                     </span>
                     <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>/month</span>
                   </div>
@@ -1160,6 +1163,9 @@ export default function Home() {
                     SELECTED
                   </div>
                 )}
+                <div className="absolute -top-3 right-3 bg-green-600 text-white text-xs font-bold px-2 py-1 rounded-full">
+                  BEST SAVINGS
+                </div>
                 <div className="text-center">
                   <h4 className={`text-lg font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                     Quarterly
@@ -1198,7 +1204,7 @@ export default function Home() {
                   </h4>
                   <div className="mb-4">
                     <span className={`text-4xl font-bold ${selectedPlan === 'yearly' ? 'text-red-600' : isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                      $25.00
+                      $30.00
                     </span>
                     <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>/year</span>
                   </div>
@@ -1215,7 +1221,7 @@ export default function Home() {
               className="w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-bold text-lg py-6 rounded-xl shadow-lg hover:shadow-xl transition-all"
             >
               <Sparkles className="h-5 w-5 mr-2" />
-              Subscribe Now - {selectedPlan === 'monthly' ? '$5.00/mo' : selectedPlan === 'quarterly' ? '$12.00/3mo' : '$25.00/yr'}
+              Subscribe Now - {selectedPlan === 'monthly' ? '$6.00/mo' : selectedPlan === 'quarterly' ? '$12.00/3mo' : '$30.00/yr'}
             </Button>
 
             <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-500'} text-center`}>

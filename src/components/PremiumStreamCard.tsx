@@ -28,7 +28,7 @@ export default function PremiumStreamCard({
   };
 
   return (
-    <Card className="relative overflow-hidden bg-white border-gray-200 shadow-lg group hover:shadow-xl transition-shadow">
+    <Card className="relative overflow-hidden bg-white border-gray-200 shadow-[0_8px_30px_rgb(0,0,0,0.12)] group hover:shadow-[0_8px_40px_rgb(0,0,0,0.16)] transition-all rounded-3xl border-4">
       <div className="relative aspect-video bg-white flex items-center justify-center overflow-hidden">
         {/* Blur overlay */}
         <div className="absolute inset-0 backdrop-blur-md bg-white/30" />

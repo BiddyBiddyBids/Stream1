@@ -110,7 +110,7 @@ export default function StreamCard({
   };
 
   return (
-    <Card className={`overflow-hidden ${isDarkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'} shadow-lg hover:shadow-xl transition-shadow`}>
+    <Card className={`overflow-hidden ${isDarkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'} shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:shadow-[0_8px_40px_rgb(0,0,0,0.16)] transition-all rounded-3xl border-4`}>
       <div className="space-y-2">
         {/* Channel Input with Platform Selector */}
         <div className={`p-3 border-b ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
