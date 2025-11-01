@@ -75,7 +75,8 @@ export default function StreamCard({
       case 'kick':
         return `https://player.kick.com/${currentChannel}`;
       case 'youtube':
-        return `https://www.youtube.com/embed/live_stream?channel=${currentChannel}&autoplay=1&mute=${muted ? 1 : 0}`;
+        // For YouTube, use the channel ID directly in the embed URL
+        return `https://www.youtube.com/embed/${currentChannel}?autoplay=1&mute=${muted ? 1 : 0}`;
     }
   };
 

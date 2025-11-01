@@ -4,12 +4,13 @@ import StreamCard from "./StreamCard";
 import PremiumStreamCard from "./PremiumStreamCard";
 import TwitchAuth from "./TwitchAuth";
 import KickAuth from "./KickAuth";
-import YouTubeAuth from "./YouTubeAuth";
-import { MonitorPlay, MessageSquare, MessageSquareOff, Sparkles, Volume2, VolumeX, Moon, Sun, Maximize2, Minimize2, MoveVertical, X, Plus, GripVertical, RotateCcw, Lock } from "lucide-react";
+import { MonitorPlay, MessageSquare, MessageSquareOff, Sparkles, Volume2, VolumeX, Moon, Sun, Maximize2, Minimize2, MoveVertical, X, Plus, GripVertical, RotateCcw, Lock, Palette, Search, Youtube } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Input } from "@/components/ui/input";
 
 // More live stream options
 const liveStreamOptions = [
@@ -36,6 +37,15 @@ const kickStreamOptions = [
   { name: "suspendas", displayName: "Suspendas", viewers: "9K" },
 ];
 
+// Mock followed Kick streamers (shown when authenticated)
+const followedKickStreamers = [
+  { name: "trainwreckstv", displayName: "Trainwreckstv", viewers: "42K" },
+  { name: "adin_ross", displayName: "Adin Ross", viewers: "38K" },
+  { name: "xposed", displayName: "xPosed", viewers: "15K" },
+  { name: "destiny", displayName: "Destiny", viewers: "18K" },
+  { name: "ice_poseidon", displayName: "Ice Poseidon", viewers: "28K" },
+];
+
 const youtubeStreamOptions = [
   { name: "UCX6OQ3DkcsbYNE6H8uQQuVA", displayName: "MrBeast Gaming", viewers: "125K" },
   { name: "UC-lHJZR3Gqxm24_Vd_AJ5Yw", displayName: "PewDiePie", viewers: "89K" },
@@ -48,6 +58,7 @@ const youtubeStreamOptions = [
 type StreamSize = 'small' | 'medium' | 'large';
 type StreamLayout = 'grid' | 'top-bottom' | 'freeform';
 type Platform = 'twitch' | 'kick' | 'youtube';
+type Colorway = 'red' | 'blue' | 'purple' | 'green' | 'orange' | 'pink';
 
 interface StreamConfig {
   channel: string;
@@ -67,14 +78,57 @@ interface ChatWindow {
   size: { width: number; height: number };
 }
 
+const colorways = {
+  red: {
+    light: 'bg-gradient-to-t from-red-50 via-red-100 to-red-800',
+    dark: 'bg-gradient-to-t from-gray-900 via-red-950 to-black',
+    name: 'Red Flame'
+  },
+  blue: {
+    light: 'bg-gradient-to-t from-blue-50 via-blue-100 to-blue-800',
+    dark: 'bg-gradient-to-t from-gray-900 via-blue-950 to-black',
+    name: 'Ocean Blue'
+  },
+  purple: {
+    light: 'bg-gradient-to-t from-purple-50 via-purple-100 to-purple-800',
+    dark: 'bg-gradient-to-t from-gray-900 via-purple-950 to-black',
+    name: 'Royal Purple'
+  },
+  green: {
+    light: 'bg-gradient-to-t from-green-50 via-green-100 to-green-800',
+    dark: 'bg-gradient-to-t from-gray-900 via-green-950 to-black',
+    name: 'Forest Green'
+  },
+  orange: {
+    light: 'bg-gradient-to-t from-orange-50 via-orange-100 to-orange-800',
+    dark: 'bg-gradient-to-t from-gray-900 via-orange-950 to-black',
+    name: 'Sunset Orange'
+  },
+  pink: {
+    light: 'bg-gradient-to-t from-pink-50 via-pink-100 to-pink-800',
+    dark: 'bg-gradient-to-t from-gray-900 via-pink-950 to-black',
+    name: 'Cherry Blossom'
+  }
+};
+
 export default function Home() {
-  const [isAuthenticated, setIsAuthenticated] = useState(true);
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    // Check if user has completed onboarding before
+    const hasCompletedOnboarding = localStorage.getItem('hasCompletedOnboarding');
+    return hasCompletedOnboarding !== 'true';
+  });
+  const [onboardingStep, setOnboardingStep] = useState<'platform' | 'streamer'>('platform');
+  const [selectedPlatform, setSelectedPlatform] = useState<Platform | null>(null);
+  const [selectedStreamer1, setSelectedStreamer1] = useState<string>("");
+  const [selectedStreamer2, setSelectedStreamer2] = useState<string>("");
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isKickAuthenticated, setIsKickAuthenticated] = useState(false);
   const [isYouTubeAuthenticated, setIsYouTubeAuthenticated] = useState(false);
   const [showChats, setShowChats] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isPremium, setIsPremium] = useState(false);
+  const [colorway, setColorway] = useState<Colorway>('red');
   const [activeStreams, setActiveStreams] = useState(["xqc", "shroud"]);
   const [premiumStreams, setPremiumStreams] = useState(["pokimane", "summit1g", "lirik", "timthetatman"]);
   const [draggedStream, setDraggedStream] = useState<string | null>(null);
@@ -99,6 +153,23 @@ export default function Home() {
   const [showPaymentOptions, setShowPaymentOptions] = useState(true);
   const [freeTrialTimeLeft, setFreeTrialTimeLeft] = useState<number | null>(null);
   const [showTrialEndedDialog, setShowTrialEndedDialog] = useState(false);
+  const [showYouTubeSearch, setShowYouTubeSearch] = useState(false);
+  const [youtubeSearchQuery, setYoutubeSearchQuery] = useState("");
+  const [youtubeSearchPosition, setYoutubeSearchPosition] = useState({ x: 100, y: 100 });
+  const [draggingYouTubeSearch, setDraggingYouTubeSearch] = useState(false);
+  const [youtubeSearchDragOffset, setYoutubeSearchDragOffset] = useState({ x: 0, y: 0 });
+  const [youtubeResultsWindow, setYoutubeResultsWindow] = useState<{ url: string; position: { x: number; y: number }; size: { width: number; height: number } } | null>(null);
+  const [draggingYouTubeResults, setDraggingYouTubeResults] = useState(false);
+  const [youtubeResultsDragOffset, setYoutubeResultsDragOffset] = useState({ x: 0, y: 0 });
+  const [resizingYouTubeResults, setResizingYouTubeResults] = useState(false);
+  const [youtubeResultsResizeStart, setYoutubeResultsResizeStart] = useState({ x: 0, y: 0, width: 0, height: 0 });
+  const [freeMovingIndex, setFreeMovingIndex] = useState<number | null>(null);
+
+  // Add state for user's favorite streamers
+  const [favoriteStreamers, setFavoriteStreamers] = useState<Array<{ channel: string; platform: Platform }>>([
+    { channel: "xqc", platform: 'twitch' },
+    { channel: "shroud", platform: 'twitch' }
+  ]);
 
   // Timer effect for free premium
   useEffect(() => {
@@ -126,21 +197,24 @@ export default function Home() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const getBackgroundClass = () => {
+    if (isDarkMode) {
+      return isPremium ? colorways[colorway].dark : 'bg-black';
+    }
+    return isPremium ? colorways[colorway].light : 'bg-gradient-to-t from-red-50 via-red-100 to-red-800';
+  };
+
   const handleMouseDownDrag = (e: React.MouseEvent, index: number) => {
     if (!isPremium) return;
     e.preventDefault();
     e.stopPropagation();
     
-    const container = containerRef.current;
-    if (!container) return;
-    
     const config = streamConfigs[index];
-    const containerRect = container.getBoundingClientRect();
     
     setDraggingIndex(index);
     setDragOffset({
-      x: e.clientX - containerRect.left - (config.x || 0),
-      y: e.clientY - containerRect.top - (config.y || 0)
+      x: e.clientX - (config.x || 0),
+      y: e.clientY - (config.y || 0)
     });
   };
 
@@ -160,20 +234,16 @@ export default function Home() {
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
-    if (draggingIndex !== null && streamLayout === 'freeform') {
-      const container = containerRef.current;
-      if (!container) return;
-      
-      const containerRect = container.getBoundingClientRect();
-      const newX = e.clientX - containerRect.left - dragOffset.x;
-      const newY = e.clientY - containerRect.top - dragOffset.y;
+    if (draggingIndex !== null && isPremium) {
+      const newX = e.clientX - dragOffset.x;
+      const newY = e.clientY - dragOffset.y;
       
       setStreamConfigs(prev => prev.map((config, i) => 
         i === draggingIndex 
           ? { ...config, x: Math.max(0, newX), y: Math.max(0, newY) }
           : config
       ));
-    } else if (resizingIndex !== null && resizeCorner) {
+    } else if (resizingIndex !== null && resizeCorner && isPremium) {
       const config = streamConfigs[resizingIndex];
       const deltaX = e.clientX - resizeStart.x;
       const deltaY = e.clientY - resizeStart.y;
@@ -290,6 +360,90 @@ export default function Home() {
   const handleChatMouseUp = () => {
     setDraggingChatIndex(null);
     setResizingChatIndex(null);
+  };
+
+  const handleYouTubeSearchMouseDown = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest('.youtube-search-header')) {
+      e.preventDefault();
+      setDraggingYouTubeSearch(true);
+      setYoutubeSearchDragOffset({
+        x: e.clientX - youtubeSearchPosition.x,
+        y: e.clientY - youtubeSearchPosition.y
+      });
+    }
+  };
+
+  const handleYouTubeSearchMouseMove = (e: React.MouseEvent) => {
+    if (draggingYouTubeSearch) {
+      const newX = e.clientX - youtubeSearchDragOffset.x;
+      const newY = e.clientY - youtubeSearchDragOffset.y;
+      setYoutubeSearchPosition({ x: newX, y: newY });
+    }
+  };
+
+  const handleYouTubeSearchMouseUp = () => {
+    setDraggingYouTubeSearch(false);
+  };
+
+  const handleYouTubeSearch = () => {
+    if (youtubeSearchQuery.trim()) {
+      const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(youtubeSearchQuery)}`;
+      setYoutubeResultsWindow({
+        url: searchUrl,
+        position: { x: 200, y: 150 },
+        size: { width: 1200, height: 800 }
+      });
+    }
+  };
+
+  const handleYouTubeResultsMouseDown = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest('.youtube-results-header')) {
+      e.preventDefault();
+      setDraggingYouTubeResults(true);
+      setYoutubeResultsDragOffset({
+        x: e.clientX - (youtubeResultsWindow?.position.x || 0),
+        y: e.clientY - (youtubeResultsWindow?.position.y || 0)
+      });
+    }
+  };
+
+  const handleYouTubeResultsMouseMove = (e: React.MouseEvent) => {
+    if (draggingYouTubeResults && youtubeResultsWindow) {
+      const newX = e.clientX - youtubeResultsDragOffset.x;
+      const newY = e.clientY - youtubeResultsDragOffset.y;
+      setYoutubeResultsWindow({
+        ...youtubeResultsWindow,
+        position: { x: newX, y: newY }
+      });
+    } else if (resizingYouTubeResults && youtubeResultsWindow) {
+      const deltaX = e.clientX - youtubeResultsResizeStart.x;
+      const deltaY = e.clientY - youtubeResultsResizeStart.y;
+      const newWidth = Math.max(800, youtubeResultsResizeStart.width + deltaX);
+      const newHeight = Math.max(600, youtubeResultsResizeStart.height + deltaY);
+      
+      setYoutubeResultsWindow({
+        ...youtubeResultsWindow,
+        size: { width: newWidth, height: newHeight }
+      });
+    }
+  };
+
+  const handleYouTubeResultsMouseUp = () => {
+    setDraggingYouTubeResults(false);
+    setResizingYouTubeResults(false);
+  };
+
+  const handleYouTubeResultsResizeMouseDown = (e: React.MouseEvent) => {
+    if (!youtubeResultsWindow) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setResizingYouTubeResults(true);
+    setYoutubeResultsResizeStart({
+      x: e.clientX,
+      y: e.clientY,
+      width: youtubeResultsWindow.size.width,
+      height: youtubeResultsWindow.size.height
+    });
   };
 
   const getChatEmbed = (channel: string, platform: Platform) => {
@@ -413,17 +567,33 @@ export default function Home() {
     
     setTimeout(() => {
       setIsPremium(true);
-      // Automatically populate all 6 streams when user subscribes
+      // Auto-populate with user's favorite streamers when they subscribe
       const defaultStreams: StreamConfig[] = [
-        { channel: "xqc", platform: 'twitch', size: 'medium', row: 'top', x: 0, y: 0, width: 600, height: 400 },
-        { channel: "shroud", platform: 'twitch', size: 'medium', row: 'top', x: 620, y: 0, width: 600, height: 400 },
+        { 
+          channel: favoriteStreamers[0]?.channel || "xqc", 
+          platform: favoriteStreamers[0]?.platform || 'twitch', 
+          size: 'medium', 
+          row: 'top', 
+          x: 0, 
+          y: 0, 
+          width: 600, 
+          height: 400 
+        },
+        { 
+          channel: favoriteStreamers[1]?.channel || "shroud", 
+          platform: favoriteStreamers[1]?.platform || 'twitch', 
+          size: 'medium', 
+          row: 'top', 
+          x: 620, 
+          y: 0, 
+          width: 600, 
+          height: 400 
+        },
         { channel: "pokimane", platform: 'twitch', size: 'medium', row: 'bottom', x: 0, y: 420, width: 600, height: 400 },
         { channel: "summit1g", platform: 'twitch', size: 'medium', row: 'bottom', x: 620, y: 420, width: 600, height: 400 },
-        { channel: "lirik", platform: 'twitch', size: 'medium', row: 'bottom', x: 1240, y: 420, width: 600, height: 400 },
-        { channel: "timthetatman", platform: 'twitch', size: 'medium', row: 'bottom', x: 1240, y: 0, width: 600, height: 400 },
       ];
       setStreamConfigs(defaultStreams);
-      alert(`Premium ${selectedPlan} upgrade successful! You now have access to all streams.`);
+      alert(`Premium ${selectedPlan} upgrade successful! Your favorite streamers have been auto-populated in the first 2 slots!`);
     }, 1000);
   };
 
@@ -431,31 +601,42 @@ export default function Home() {
     setIsPremium(true);
     setShowPaymentOptions(false);
     setFreeTrialTimeLeft(15 * 60); // 15 minutes in seconds
+    // Auto-populate with user's favorite streamers for free trial
     const defaultStreams: StreamConfig[] = [
-      { channel: "xqc", platform: 'twitch', size: 'medium', row: 'top', x: 0, y: 0, width: 600, height: 400 },
-      { channel: "shroud", platform: 'twitch', size: 'medium', row: 'top', x: 620, y: 0, width: 600, height: 400 },
+      { 
+        channel: favoriteStreamers[0]?.channel || "xqc", 
+        platform: favoriteStreamers[0]?.platform || 'twitch', 
+        size: 'medium', 
+        row: 'top', 
+        x: 0, 
+        y: 0, 
+        width: 600, 
+        height: 400 
+      },
+      { 
+        channel: favoriteStreamers[1]?.channel || "shroud", 
+        platform: favoriteStreamers[1]?.platform || 'twitch', 
+        size: 'medium', 
+        row: 'top', 
+        x: 620, 
+        y: 0, 
+        width: 600, 
+        height: 400 
+      },
       { channel: "pokimane", platform: 'twitch', size: 'medium', row: 'bottom', x: 0, y: 420, width: 600, height: 400 },
       { channel: "summit1g", platform: 'twitch', size: 'medium', row: 'bottom', x: 620, y: 420, width: 600, height: 400 },
-      { channel: "lirik", platform: 'twitch', size: 'medium', row: 'bottom', x: 1240, y: 420, width: 600, height: 400 },
-      { channel: "timthetatman", platform: 'twitch', size: 'medium', row: 'bottom', x: 1240, y: 0, width: 600, height: 400 },
     ];
     setStreamConfigs(defaultStreams);
   };
 
-  const removeStream = (index: number) => {
-    if (!isPremium) return;
-    setStreamConfigs(prev => prev.filter((_, i) => i !== index));
-  };
-
   const restoreAllStreams = () => {
     if (!isPremium) return;
+    // Restore to 4 streams instead of 6
     const defaultStreams: StreamConfig[] = [
       { channel: "xqc", platform: 'twitch', size: 'medium', row: 'top', x: 0, y: 0, width: 600, height: 400 },
       { channel: "shroud", platform: 'twitch', size: 'medium', row: 'top', x: 620, y: 0, width: 600, height: 400 },
       { channel: "pokimane", platform: 'twitch', size: 'medium', row: 'bottom', x: 0, y: 420, width: 600, height: 400 },
       { channel: "summit1g", platform: 'twitch', size: 'medium', row: 'bottom', x: 620, y: 420, width: 600, height: 400 },
-      { channel: "lirik", platform: 'twitch', size: 'medium', row: 'bottom', x: 1240, y: 420, width: 600, height: 400 },
-      { channel: "timthetatman", platform: 'twitch', size: 'medium', row: 'bottom', x: 1240, y: 0, width: 600, height: 400 },
     ];
     setStreamConfigs(defaultStreams);
   };
@@ -505,11 +686,27 @@ export default function Home() {
   const assignStreamToSlot = (streamName: string, platform: Platform) => {
     if (selectedSlot === null) return;
     
-    setStreamConfigs(prev => prev.map((config, index) => 
-      index === selectedSlot 
-        ? { ...config, channel: streamName, platform }
-        : config
-    ));
+    // If the slot already exists, update it
+    if (selectedSlot < streamConfigs.length) {
+      setStreamConfigs(prev => prev.map((config, index) => 
+        index === selectedSlot 
+          ? { ...config, channel: streamName, platform }
+          : config
+      ));
+    } else {
+      // If the slot doesn't exist yet (slots 5 and 6), create a new stream config
+      const newConfig: StreamConfig = {
+        channel: streamName,
+        platform,
+        size: 'medium',
+        row: 'bottom',
+        x: streamConfigs.length * 620,
+        y: selectedSlot >= 4 ? 420 : 0,
+        width: 600,
+        height: 400
+      };
+      setStreamConfigs(prev => [...prev, newConfig]);
+    }
     
     setSelectedSlot(null);
   };
@@ -522,18 +719,238 @@ export default function Home() {
     return index !== -1 ? index + 1 : null;
   };
 
+  function removeStream(index: number) {
+    setStreamConfigs(prev => prev.filter((_, i) => i !== index));
+  }
+
+  const toggleFreeMove = (index: number) => {
+    if (!isPremium) return;
+    setFreeMovingIndex(freeMovingIndex === index ? null : index);
+  };
+
+  const handleOnboardingComplete = () => {
+    const configs: StreamConfig[] = [];
+    
+    if (selectedStreamer1) {
+      configs.push({
+        channel: selectedStreamer1,
+        platform: selectedPlatform || 'twitch',
+        size: 'medium',
+        row: 'top',
+        x: 0,
+        y: 0,
+        width: 600,
+        height: 400
+      });
+    }
+    
+    if (selectedStreamer2) {
+      configs.push({
+        channel: selectedStreamer2,
+        platform: selectedPlatform || 'twitch',
+        size: 'medium',
+        row: 'top',
+        x: 620,
+        y: 0,
+        width: 600,
+        height: 400
+      });
+    }
+    
+    if (configs.length > 0) {
+      setStreamConfigs(configs);
+    }
+    
+    localStorage.setItem('hasCompletedOnboarding', 'true');
+    setShowOnboarding(false);
+  };
+
+  const handleSkipOnboarding = () => {
+    localStorage.setItem('hasCompletedOnboarding', 'true');
+    setShowOnboarding(false);
+  };
+
+  const getStreamerOptions = () => {
+    switch (selectedPlatform) {
+      case 'kick':
+        return kickStreamOptions;
+      case 'youtube':
+        return youtubeStreamOptions;
+      default:
+        return liveStreamOptions;
+    }
+  };
+
   return (
     <div 
-      className={`min-h-screen ${isDarkMode ? 'bg-black' : 'bg-gradient-to-b from-red-50 via-red-100 to-red-800'} relative overflow-hidden`}
+      className={`min-h-screen ${getBackgroundClass()} relative overflow-hidden`}
       onMouseMove={(e) => {
         handleMouseMove(e);
         handleChatMouseMove(e);
+        handleYouTubeSearchMouseMove(e);
+        handleYouTubeResultsMouseMove(e);
       }}
       onMouseUp={() => {
         handleMouseUp();
         handleChatMouseUp();
+        handleYouTubeSearchMouseUp();
+        handleYouTubeResultsMouseUp();
       }}
     >
+      {/* Onboarding Screen */}
+      {showOnboarding && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center backdrop-blur-xl bg-black/50">
+          <div className={`${isDarkMode ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200'} border-2 rounded-2xl p-8 max-w-2xl w-full mx-4 shadow-2xl`}>
+            {onboardingStep === 'platform' ? (
+              <div className="space-y-6">
+                <div className="text-center">
+                  <h2 className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'} mb-2`}>
+                    Welcome to MultiStreamWatch
+                  </h2>
+                  <p className={`text-base ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                    Choose your streaming platform to get started
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <button
+                    onClick={() => {
+                      setSelectedPlatform('twitch');
+                      setOnboardingStep('streamer');
+                    }}
+                    className={`p-6 rounded-xl border-2 transition-all hover:scale-105 ${
+                      isDarkMode 
+                        ? 'border-purple-500 bg-purple-950 hover:bg-purple-900' 
+                        : 'border-purple-300 bg-purple-50 hover:bg-purple-100'
+                    }`}
+                  >
+                    <svg className="h-12 w-12 text-purple-600 mx-auto mb-3" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/>
+                    </svg>
+                    <h3 className={`text-lg font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Twitch</h3>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setSelectedPlatform('kick');
+                      setOnboardingStep('streamer');
+                    }}
+                    className={`p-6 rounded-xl border-2 transition-all hover:scale-105 ${
+                      isDarkMode 
+                        ? 'border-green-500 bg-green-950 hover:bg-green-900' 
+                        : 'border-green-300 bg-green-50 hover:bg-green-100'
+                    }`}
+                  >
+                    <svg className="h-12 w-12 text-green-600 mx-auto mb-3" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 2L2 7v10l10 5 10-5V7l-10-5zm0 2.18L19.82 8 12 11.82 4.18 8 12 4.18zM4 9.47l7 3.5v7.06l-7-3.5V9.47zm9 10.56v-7.06l7-3.5v7.06l-7 3.5z"/>
+                    </svg>
+                    <h3 className={`text-lg font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Kick</h3>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setSelectedPlatform('youtube');
+                      setOnboardingStep('streamer');
+                    }}
+                    className={`p-6 rounded-xl border-2 transition-all hover:scale-105 ${
+                      isDarkMode 
+                        ? 'border-red-500 bg-red-950 hover:bg-red-900' 
+                        : 'border-red-300 bg-red-50 hover:bg-red-100'
+                    }`}
+                  >
+                    <svg className="h-12 w-12 text-red-600 mx-auto mb-3" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                    </svg>
+                    <h3 className={`text-lg font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>YouTube</h3>
+                  </button>
+                </div>
+
+                <div className="text-center">
+                  <Button
+                    onClick={handleSkipOnboarding}
+                    variant="ghost"
+                    className={`${isDarkMode ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}
+                  >
+                    Skip and explore
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <div className="text-center">
+                  <h2 className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'} mb-2`}>
+                    Choose Your Favorite Streamers
+                  </h2>
+                  <p className={`text-base ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                    Type the username of up to 2 streamers to start watching
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className={`text-sm font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-2 block`}>
+                      Stream 1
+                    </label>
+                    <input
+                      type="text"
+                      value={selectedStreamer1}
+                      onChange={(e) => setSelectedStreamer1(e.target.value)}
+                      placeholder="Enter streamer username..."
+                      className={`w-full p-3 rounded-lg border-2 ${
+                        isDarkMode 
+                          ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500' 
+                          : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
+                      }`}
+                    />
+                  </div>
+
+                  <div>
+                    <label className={`text-sm font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-2 block`}>
+                      Stream 2 (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={selectedStreamer2}
+                      onChange={(e) => setSelectedStreamer2(e.target.value)}
+                      placeholder="Enter streamer username..."
+                      className={`w-full p-3 rounded-lg border-2 ${
+                        isDarkMode 
+                          ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500' 
+                          : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
+                      }`}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <Button
+                    onClick={() => setOnboardingStep('platform')}
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    Back
+                  </Button>
+                  <Button
+                    onClick={handleSkipOnboarding}
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    Skip
+                  </Button>
+                  <Button
+                    onClick={handleOnboardingComplete}
+                    disabled={!selectedStreamer1}
+                    className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                  >
+                    Start Watching
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <header className={`${isDarkMode ? 'bg-gray-900/95 border-gray-800' : 'bg-white/95 border-gray-200'} backdrop-blur-sm border-b sticky top-0 z-50`}>
         <div className="max-w-[95vw] mx-auto px-6 py-4 flex items-center justify-between">
@@ -553,6 +970,54 @@ export default function Home() {
             </div>
           </div>
           <div className="flex items-center gap-4">
+            {/* Colorway Selector - Premium Only */}
+            <div className="relative">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    disabled={!isPremium}
+                    className={`${isDarkMode ? 'text-white hover:bg-gray-800' : 'text-gray-900 hover:bg-gray-100'} ${!isPremium ? 'opacity-60' : ''}`}
+                  >
+                    <Palette className="h-5 w-5" />
+                  </Button>
+                </PopoverTrigger>
+                {isPremium && (
+                  <PopoverContent className={`w-80 ${isDarkMode ? 'bg-gray-900 border-gray-700' : 'bg-white'}`}>
+                    <div className="space-y-3">
+                      <h4 className={`font-semibold text-sm ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                        Choose Background Theme
+                      </h4>
+                      <div className="grid grid-cols-2 gap-2">
+                        {(Object.keys(colorways) as Colorway[]).map((color) => (
+                          <button
+                            key={color}
+                            onClick={() => setColorway(color)}
+                            className={`p-3 rounded-lg border-2 transition-all ${
+                              colorway === color 
+                                ? 'border-red-600 scale-105' 
+                                : isDarkMode 
+                                  ? 'border-gray-700 hover:border-gray-600' 
+                                  : 'border-gray-200 hover:border-gray-300'
+                            }`}
+                          >
+                            <div className={`h-12 rounded ${isDarkMode ? colorways[color].dark : colorways[color].light} mb-2`} />
+                            <p className={`text-xs font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                              {colorways[color].name}
+                            </p>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </PopoverContent>
+                )}
+              </Popover>
+              {!isPremium && (
+                <Lock className="h-3 w-3 text-red-600 absolute -top-1 -right-1" />
+              )}
+            </div>
+
             {/* Dark Mode Toggle - Visible but locked for non-premium */}
             <div className="relative">
               <Button
@@ -576,7 +1041,6 @@ export default function Home() {
             
             <TwitchAuth onAuthChange={setIsAuthenticated} />
             <KickAuth onAuthChange={setIsKickAuthenticated} />
-            <YouTubeAuth onAuthChange={setIsYouTubeAuthenticated} />
           </div>
         </div>
       </header>
@@ -587,7 +1051,7 @@ export default function Home() {
         {isAuthenticated && (
           <div className="space-y-3">
             {/* Stream Slot Selector */}
-            <div className={`${isDarkMode ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200'} border-2 rounded-lg p-4`}>
+            <div className={`${isDarkMode ? 'bg-gray-900' : 'bg-transparent'} rounded-lg p-4`}>
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
                   <h3 className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
@@ -603,6 +1067,7 @@ export default function Home() {
                   </span>
                 )}
               </div>
+
               <div className="flex gap-2">
                 {[0, 1, 2, 3, 4, 5].map((index) => (
                   <Button
@@ -614,11 +1079,13 @@ export default function Home() {
                       selectedSlot === index 
                         ? 'bg-red-600 hover:bg-red-700 text-white border-red-600' 
                         : isDarkMode 
-                          ? 'border-gray-700 hover:bg-gray-800 text-white' 
-                          : 'border-gray-300 hover:bg-gray-50'
+                          ? 'border-transparent hover:bg-gray-800 text-white' 
+                          : 'border-transparent hover:bg-gray-50'
                     } ${!isPremium && index >= 2 ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
-                    <span className={`text-2xl font-bold ${!isPremium && index >= 2 ? 'blur-sm' : ''}`}>
+                    <span className={`text-2xl font-bold ${!isPremium && index >= 2 ? 'blur-sm' : ''} ${
+                      selectedSlot === index ? 'text-white' : isDarkMode ? 'text-white' : 'text-black'
+                    }`}>
                       {index + 1}
                     </span>
                     {!isPremium && index >= 2 && (
@@ -651,7 +1118,7 @@ export default function Home() {
                 )}
               </div>
               <div className="flex items-center gap-2">
-                {isPremium && streamConfigs.length < 6 && (
+                {isPremium && streamConfigs.length < 4 && (
                   <Button
                     onClick={restoreAllStreams}
                     variant="outline"
@@ -659,8 +1126,13 @@ export default function Home() {
                     className="border-green-300 bg-green-50 hover:bg-green-100 text-green-700"
                   >
                     <RotateCcw className="h-4 w-4 mr-2" />
-                    Restore All 6 Streams
+                    Restore All 4 Streams
                   </Button>
+                )}
+                {isPremium && streamConfigs.length >= 4 && streamConfigs.length < 6 && (
+                  <span className={`text-sm font-semibold ${isDarkMode ? 'text-green-400' : 'text-green-600'}`}>
+                    ✓ You can add {6 - streamConfigs.length} more stream{6 - streamConfigs.length > 1 ? 's' : ''}!
+                  </span>
                 )}
                 <Button
                   onClick={() => setIsMuted(!isMuted)}
@@ -698,6 +1170,17 @@ export default function Home() {
                         Show Chats
                       </>
                     )}
+                  </Button>
+                )}
+                {isPremium && (
+                  <Button
+                    onClick={() => setShowYouTubeSearch(!showYouTubeSearch)}
+                    variant="outline"
+                    size="sm"
+                    className="border-red-300 bg-red-600 hover:bg-red-700 text-white"
+                  >
+                    <Youtube className="h-4 w-4 mr-2" />
+                    YouTube Search
                   </Button>
                 )}
               </div>
@@ -775,6 +1258,84 @@ export default function Home() {
                 </svg>
                 <h3 className={`text-sm font-semibold ${isDarkMode ? 'text-green-400' : 'text-green-600'}`}>Kick</h3>
               </div>
+
+              {/* Followed Kick Streamers - Only shown when authenticated */}
+              {isKickAuthenticated && (
+                <div className="mb-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <h4 className={`text-xs font-semibold ${isDarkMode ? 'text-green-300' : 'text-green-700'}`}>
+                      Your Followed Kick Streamers
+                    </h4>
+                    <Badge variant="secondary" className="text-xs bg-green-100 text-green-700">
+                      {followedKickStreamers.length} Following
+                    </Badge>
+                  </div>
+                  <ScrollArea className="w-full">
+                    <div className="flex gap-3 pb-2">
+                      {followedKickStreamers.map((stream) => {
+                        const isActive = streamConfigs.some(config => config.channel === stream.name && config.platform === 'kick');
+                        const slotNumber = getSlotNumber(stream.name, 'kick');
+                        const canAdd = isPremium && !isActive && streamConfigs.length < 6;
+                        const canAssign = selectedSlot !== null;
+                        
+                        return (
+                          <div
+                            key={`followed-${stream.name}`}
+                            draggable={isPremium && isActive}
+                            onDragStart={() => handleDragStart(stream.name)}
+                            onDragEnd={handleDragEnd}
+                            className={isPremium && isActive ? "cursor-grab active:cursor-grabbing" : ""}
+                          >
+                            <Button
+                              onClick={() => {
+                                if (canAssign) {
+                                  assignStreamToSlot(stream.name, 'kick');
+                                } else if (canAdd) {
+                                  const newConfig: StreamConfig = {
+                                    channel: stream.name,
+                                    platform: 'kick',
+                                    size: 'medium',
+                                    row: 'bottom',
+                                    x: streamConfigs.length * 620,
+                                    y: 0,
+                                    width: 600,
+                                    height: 400
+                                  };
+                                  setStreamConfigs(prev => [...prev, newConfig]);
+                                }
+                              }}
+                              variant="outline"
+                              disabled={!canAdd && !isActive && !canAssign}
+                              className={`flex-shrink-0 flex items-center gap-2 h-auto px-4 py-2 border-green-400 rounded-lg transition-all ${
+                                isActive ? 'border-green-500 bg-green-50' : 
+                                canAssign ? 'hover:border-red-500 hover:bg-red-50 cursor-pointer border-red-300 bg-green-50' :
+                                canAdd ? 'hover:border-green-500 hover:bg-green-50 cursor-pointer bg-green-50' : 
+                                'opacity-60 cursor-not-allowed'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2">
+                                <div className="relative">
+                                  <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse" />
+                                </div>
+                                <span className="text-sm font-medium text-gray-900">
+                                  {slotNumber && <span className="font-bold text-red-600 mr-1">{slotNumber}</span>}
+                                  {stream.displayName}
+                                </span>
+                                <Badge variant="secondary" className="text-xs bg-green-100 text-green-700">
+                                  {stream.viewers}
+                                </Badge>
+                                {canAdd && !canAssign && <Plus className="h-3 w-3 text-green-600" />}
+                              </div>
+                            </Button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <ScrollBar orientation="horizontal" />
+                  </ScrollArea>
+                </div>
+              )}
+
               <ScrollArea className="w-full">
                 <div className="flex gap-3 pb-2">
                   {kickStreamOptions.map((stream, streamIndex) => {
@@ -1017,6 +1578,9 @@ export default function Home() {
                           SELECTED
                         </div>
                       )}
+                      <div className="absolute -top-2 right-2 bg-orange-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                        LIMITED TIME ONLY!
+                      </div>
                       <div className="text-center">
                         <h4 className={`text-base font-bold mb-1 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                           Yearly
@@ -1096,6 +1660,145 @@ export default function Home() {
           </div>
         )}
       </main>
+
+      {/* YouTube Search Panel - Premium Only */}
+      {isPremium && showYouTubeSearch && (
+        <div
+          className={`fixed ${isDarkMode ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200'} border-2 rounded-lg shadow-2xl z-50`}
+          style={{
+            left: youtubeSearchPosition.x,
+            top: youtubeSearchPosition.y,
+            width: 400,
+            cursor: draggingYouTubeSearch ? 'grabbing' : 'default'
+          }}
+          onMouseDown={handleYouTubeSearchMouseDown}
+        >
+          <div className="flex flex-col">
+            <div 
+              className={`youtube-search-header flex items-center justify-between px-4 py-3 ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-red-50 border-gray-200'} border-b cursor-grab active:cursor-grabbing rounded-t-lg`}
+            >
+              <div className="flex items-center gap-3">
+                <GripVertical className={`h-5 w-5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+                <Youtube className="h-5 w-5 text-red-600" />
+                <h3 className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                  YouTube Search
+                </h3>
+              </div>
+              <Button
+                onClick={() => setShowYouTubeSearch(false)}
+                variant="ghost"
+                size="sm"
+                className="hover:bg-red-100 hover:text-red-600"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="p-4 space-y-3">
+              <div className="flex gap-2">
+                <Input
+                  type="text"
+                  placeholder="Search YouTube..."
+                  value={youtubeSearchQuery}
+                  onChange={(e) => setYoutubeSearchQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleYouTubeSearch();
+                    }
+                  }}
+                  className={`flex-1 ${isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-300'}`}
+                />
+                <Button
+                  onClick={handleYouTubeSearch}
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                >
+                  <Search className="h-4 w-4" />
+                </Button>
+              </div>
+              <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                Search for YouTube videos and streams. Results will open in a new tab.
+              </p>
+              <div className="space-y-2">
+                <p className={`text-xs font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                  Quick Searches:
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {['Gaming Live', 'Music Live', 'News Live', 'Sports Live'].map((query) => (
+                    <Button
+                      key={query}
+                      onClick={() => {
+                        setYoutubeSearchQuery(query);
+                        const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
+                        setYoutubeResultsWindow({
+                          url: searchUrl,
+                          position: { x: 200, y: 150 },
+                          size: { width: 1200, height: 800 }
+                        });
+                      }}
+                      variant="outline"
+                      size="sm"
+                      className={`text-xs ${isDarkMode ? 'border-gray-700 hover:bg-gray-800 text-white' : 'border-gray-300 hover:bg-gray-100'}`}
+                    >
+                      {query}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* YouTube Results Popup Window */}
+      {isPremium && youtubeResultsWindow && (
+        <div
+          className={`fixed ${isDarkMode ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200'} border-2 rounded-lg shadow-2xl z-50`}
+          style={{
+            left: youtubeResultsWindow.position.x,
+            top: youtubeResultsWindow.position.y,
+            width: youtubeResultsWindow.size.width,
+            height: youtubeResultsWindow.size.height,
+            cursor: draggingYouTubeResults ? 'grabbing' : 'default'
+          }}
+          onMouseDown={handleYouTubeResultsMouseDown}
+        >
+          <div className="h-full flex flex-col relative">
+            <div 
+              className={`youtube-results-header flex items-center justify-between px-4 py-3 ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-red-50 border-gray-200'} border-b cursor-grab active:cursor-grabbing rounded-t-lg`}
+            >
+              <div className="flex items-center gap-3">
+                <GripVertical className={`h-5 w-5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+                <Youtube className="h-5 w-5 text-red-600" />
+                <h3 className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                  YouTube Results
+                </h3>
+              </div>
+              <Button
+                onClick={() => setYoutubeResultsWindow(null)}
+                variant="ghost"
+                size="sm"
+                className="hover:bg-red-100 hover:text-red-600"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <iframe
+                src={youtubeResultsWindow.url}
+                className="w-full h-full"
+                title="YouTube Search Results"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              />
+            </div>
+            {/* Resize handle */}
+            <div
+              className={`absolute bottom-0 right-0 w-6 h-6 ${isDarkMode ? 'bg-red-600 hover:bg-red-700' : 'bg-red-500 hover:bg-red-600'} cursor-nwse-resize rounded-bl-lg flex items-center justify-center group`}
+              onMouseDown={handleYouTubeResultsResizeMouseDown}
+            >
+              <div className="w-3 h-3 border-r-2 border-b-2 border-white" />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Trial Ended Dialog */}
       <Dialog open={showTrialEndedDialog} onOpenChange={setShowTrialEndedDialog}>
@@ -1319,17 +2022,7 @@ export default function Home() {
                   <GripVertical className="h-4 w-4" />
                 </div>
 
-                {/* Pop Out Chat button */}
-                <Button
-                  onClick={() => openChatWindow(config.channel, config.platform)}
-                  size="sm"
-                  className="absolute top-2 left-28 z-20 h-8 px-3 bg-blue-600 hover:bg-blue-700"
-                >
-                  <MessageSquare className="h-4 w-4 mr-1" />
-                  Pop Out
-                </Button>
-
-                {/* Delete button - top right only */}
+                {/* Delete button - top right */}
                 <Button
                   onClick={() => removeStream(index)}
                   size="sm"
@@ -1337,6 +2030,16 @@ export default function Home() {
                   className="absolute top-2 right-2 z-20 h-8 w-8 p-0 bg-red-600 hover:bg-red-700"
                 >
                   <X className="h-4 w-4" />
+                </Button>
+
+                {/* Pop Out Chat button - next to X button */}
+                <Button
+                  onClick={() => openChatWindow(config.channel, config.platform)}
+                  size="sm"
+                  className="absolute top-2 right-12 z-20 h-8 px-3 bg-blue-600 hover:bg-blue-700"
+                >
+                  <MessageSquare className="h-4 w-4 mr-1" />
+                  Pop Out
                 </Button>
 
                 {/* Resize handles */}
@@ -1372,51 +2075,64 @@ export default function Home() {
           ))}
         </div>
       ) : (
-        <div className="max-w-[90vw] mx-auto px-6">
+        <div ref={containerRef} className="max-w-[90vw] mx-auto px-6 pb-16 relative">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Active Streams - only first 2 */}
-            {streamConfigs.slice(0, 2).map((config, index) => (
-              <div key={`stream-${index}`} className="relative">
-                {/* Stream Number Badge */}
-                <div className="absolute top-2 left-2 z-20 bg-gray-900/90 text-white px-3 py-1 rounded-full font-bold text-sm">
-                  {index + 1}
-                </div>
+            {/* Active Streams - first 4 */}
+            {streamConfigs.slice(0, 4).map((config, index) => {
+              return (
+                <div 
+                  key={`stream-${index}`} 
+                  className="relative"
+                  style={
+                    isPremium && (config.width !== 600 || config.height !== 400)
+                      ? { width: config.width, height: config.height }
+                      : undefined
+                  }
+                >
+                  {/* Stream Number Badge */}
+                  <div className="absolute top-2 left-2 z-20 bg-gray-900/90 text-white px-3 py-1 rounded-full font-bold text-sm">
+                    {index + 1}
+                  </div>
 
-                {isPremium && (
-                  <>
-                    <Button
-                      onClick={() => openChatWindow(config.channel, config.platform)}
-                      size="sm"
-                      className="absolute top-2 left-14 z-20 h-8 px-3 bg-blue-600 hover:bg-blue-700"
-                    >
-                      <MessageSquare className="h-4 w-4 mr-1" />
-                      Pop Out
-                    </Button>
-                    
-                    {/* Delete button */}
-                    <Button
-                      onClick={() => removeStream(index)}
-                      size="sm"
-                      variant="destructive"
-                      className="absolute top-2 right-2 z-20 h-8 w-8 p-0 bg-red-600 hover:bg-red-700"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </>
-                )}
-                
-                <StreamCard
-                  channelName={config.channel}
-                  platform={config.platform}
-                  showChat={showChats}
-                  muted={isMuted}
-                  isDarkMode={isDarkMode}
-                  isPremium={isPremium}
-                  onChannelChange={(newChannel) => handleChannelChange(config.channel, newChannel)}
-                  onPlatformChange={(newPlatform) => handlePlatformChange(config.channel, newPlatform)}
-                />
-              </div>
-            ))}
+                  {isPremium && (
+                    <>
+                      {/* Delete button - top right */}
+                      <Button
+                        onClick={() => removeStream(index)}
+                        size="sm"
+                        variant="destructive"
+                        className="absolute top-2 right-2 z-20 h-8 w-8 p-0 bg-red-600 hover:bg-red-700"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+
+                      {/* Pop Out Chat button */}
+                      <Button
+                        onClick={() => openChatWindow(config.channel, config.platform)}
+                        size="sm"
+                        className="absolute top-2 right-12 z-20 h-8 px-3 bg-blue-600 hover:bg-blue-700"
+                      >
+                        <MessageSquare className="h-4 w-4 mr-1" />
+                        Pop Out
+                      </Button>
+                    </>
+                  )}
+                  
+                  <div className="w-full h-full">
+                    <StreamCard
+                      channelName={config.channel}
+                      platform={config.platform}
+                      showChat={showChats}
+                      muted={isMuted}
+                      isDarkMode={isDarkMode}
+                      isPremium={isPremium}
+                      onChannelChange={(newChannel) => handleChannelChange(config.channel, newChannel)}
+                      onPlatformChange={(newPlatform) => handlePlatformChange(config.channel, newPlatform)}
+                    />
+                  </div>
+                </div>
+              );
+            })}
             
             {/* Premium Locked Slots - streams 3-6 always locked for non-premium */}
             {!isPremium && [3, 4, 5, 6].map((position) => (
@@ -1427,45 +2143,97 @@ export default function Home() {
               />
             ))}
 
-            {/* If premium, show remaining streams */}
-            {isPremium && streamConfigs.slice(2).map((config, index) => (
-              <div key={`stream-${index + 2}`} className="relative">
-                {/* Stream Number Badge */}
-                <div className="absolute top-2 left-2 z-20 bg-gray-900/90 text-white px-3 py-1 rounded-full font-bold text-sm">
-                  {index + 3}
-                </div>
+            {/* If premium, show streams 5-6 with extra spacing */}
+            {isPremium && streamConfigs.slice(4).map((config, index) => {
+              const streamIndex = index + 4;
+              
+              return (
+                <div 
+                  key={`stream-${streamIndex}`} 
+                  className="relative mt-8"
+                  style={
+                    config.width !== 600 || config.height !== 400
+                      ? { width: config.width, height: config.height }
+                      : undefined
+                  }
+                >
+                  {/* Stream Number Badge */}
+                  <div className="absolute top-2 left-2 z-20 bg-gray-900/90 text-white px-3 py-1 rounded-full font-bold text-sm">
+                    {streamIndex + 1}
+                  </div>
 
-                <Button
-                  onClick={() => openChatWindow(config.channel, config.platform)}
-                  size="sm"
-                  className="absolute top-2 left-14 z-20 h-8 px-3 bg-blue-600 hover:bg-blue-700"
+                  {/* Delete button - top right */}
+                  <Button
+                    onClick={() => removeStream(streamIndex)}
+                    size="sm"
+                    variant="destructive"
+                    className="absolute top-2 right-2 z-20 h-8 w-8 p-0 bg-red-600 hover:bg-red-700"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+
+                  {/* Pop Out Chat button */}
+                  <Button
+                    onClick={() => openChatWindow(config.channel, config.platform)}
+                    size="sm"
+                    className="absolute top-2 right-12 z-20 h-8 px-3 bg-blue-600 hover:bg-blue-700"
+                  >
+                    <MessageSquare className="h-4 w-4 mr-1" />
+                    Pop Out
+                  </Button>
+                  
+                  <div className="w-full h-full">
+                    <StreamCard
+                      channelName={config.channel}
+                      platform={config.platform}
+                      showChat={showChats}
+                      muted={isMuted}
+                      isDarkMode={isDarkMode}
+                      isPremium={isPremium}
+                      onChannelChange={(newChannel) => handleChannelChange(config.channel, newChannel)}
+                      onPlatformChange={(newPlatform) => handlePlatformChange(config.channel, newPlatform)}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Show empty slots with "Add Stream" button for premium users (slots 5-6) */}
+            {isPremium && streamConfigs.length < 6 && Array.from({ length: 6 - streamConfigs.length }).map((_, index) => {
+              const slotNumber = streamConfigs.length + index + 1;
+              const isBottomRow = slotNumber >= 5;
+              
+              return (
+                <div 
+                  key={`empty-slot-${index}`} 
+                  onClick={() => {
+                    // Auto-populate with a default stream when clicked
+                    const defaultStreams = ['lirik', 'timthetatman', 'ninja', 'tfue'];
+                    const newChannel = defaultStreams[index] || 'xqc';
+                    const newConfig: StreamConfig = {
+                      channel: newChannel,
+                      platform: 'twitch',
+                      size: 'medium',
+                      row: 'bottom',
+                      x: streamConfigs.length * 620,
+                      y: 0,
+                      width: 600,
+                      height: 400
+                    };
+                    setStreamConfigs(prev => [...prev, newConfig]);
+                  }}
+                  className={`${isDarkMode ? 'bg-gray-900 border-gray-700 hover:bg-gray-800' : 'bg-white border-gray-300 hover:bg-gray-50'} border-2 border-dashed rounded-3xl p-8 flex flex-col items-center justify-center gap-4 min-h-[400px] cursor-pointer transition-all ${isBottomRow ? 'mt-8' : ''}`}
                 >
-                  <MessageSquare className="h-4 w-4 mr-1" />
-                  Pop Out
-                </Button>
-                
-                {/* Delete button */}
-                <Button
-                  onClick={() => removeStream(index + 2)}
-                  size="sm"
-                  variant="destructive"
-                  className="absolute top-2 right-2 z-20 h-8 w-8 p-0 bg-red-600 hover:bg-red-700"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-                
-                <StreamCard
-                  channelName={config.channel}
-                  platform={config.platform}
-                  showChat={showChats}
-                  muted={isMuted}
-                  isDarkMode={isDarkMode}
-                  isPremium={isPremium}
-                  onChannelChange={(newChannel) => handleChannelChange(config.channel, newChannel)}
-                  onPlatformChange={(newPlatform) => handlePlatformChange(config.channel, newPlatform)}
-                />
-              </div>
-            ))}
+                  <Plus className={`h-16 w-16 ${isDarkMode ? 'text-gray-600' : 'text-gray-400'}`} />
+                  <p className={`text-lg font-semibold ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                    Stream Slot {slotNumber}
+                  </p>
+                  <p className={`text-sm ${isDarkMode ? 'text-gray-500' : 'text-gray-500'} text-center`}>
+                    Click to add a stream or select a slot number above, then click a streamer
+                  </p>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
